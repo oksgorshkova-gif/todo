@@ -65,8 +65,7 @@ class ToDoApp:
         )
 
     def save_tasks(self) -> None:
-        with open(self.FILE_PATH, "w", encoding="utf-8") as tasks_file:
-            json.dump(self.tasks, tasks_file, indent=4)
+        pass
 
     def events(self) -> None:
         print("Task events:")
