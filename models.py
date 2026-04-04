@@ -10,18 +10,10 @@ class ToDoApp:
     events_log = []
 
     def __init__(self):
-        self.FILE_PATH = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "tasks.json"
-        )
         self.tasks = self.load_tasks()
     
     def load_tasks(self) -> list:
-        try:
-            with open(self.FILE_PATH, "r", encoding="utf-8") as tasks_file:
-                return json.load(tasks_file)
-        except FileNotFoundError:
-            return []
+        return []
 
     def add_task(self, title: str, task_description: str = "") -> None:
         print(f"Adding task: {title}")
@@ -93,6 +85,5 @@ class ToDoApp:
         print("- del: Delete a task")
         print("- list: List all tasks")
         print("- events: Show task events")
-        print("- save: Save tasks to file")
         print("- help: Show this help message")
         
