@@ -1,7 +1,6 @@
-from models import ToDoApp
+from models import ToDoApp, List, Logs
 import argparse
 from rich.console import Console
-from rich.panel import Panel
 
 console = Console()
 
@@ -11,8 +10,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "action",
-        choices=["add", "done", "del", "list", "events", "help"],
-        help="Действие для выполнения: add, done, del, list, events, help",
+        choices=["add", "done", "del", "list", "logs", "help"],
+        help="Действие для выполнения: add, done, del, list, logs, help",
     )
     parser.add_argument(
         "--title",
@@ -27,41 +26,70 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     parser = build_parser()
-    args = parser.parse_args()
     app = ToDoApp()
+    list_app = List()
+    logs = Logs()
 
-    if args.action == "add":
-        if not args.title:
-            console.print("[red]Ошибка: --title требуется для добавления задачи.[/red]")
-            return
-        app.add_task(args.title, args.description)
-        app.save_tasks()
-        console.print(f"[green]Задача '{args.title}' добавлена.[/green]")
+    while True:
+        command = input("Введите команду (add, done, del, list, logs, help) или 'exit' для выхода: ").strip()
+        if command.lower() == "exit":
+            console.print("[green]Выход из приложения.[/green]")
+            break
+        try:
+            args = parser.parse_args(command.split())
+        except SystemExit:
+            console.print("[red]Неверная команда. Введите 'help' для получения списка доступных команд.[/red]")
+            logs.log_event("invalid_command", command)
+            continue
 
-    elif args.action == "done":
-        if not args.title:
-            console.print("[red]Ошибка: --title требуется для завершения задачи.[/red]")
-            return
-        app.done(args.title)
-        app.save_tasks()
-        console.print(f"[green]Задача '{args.title}' завершена.[/green]")
+        if args.action == "add":
+            if not args.title:
+                console.print("[red]Ошибка: --title требуется для добавления задачи.[/red]")
+                logs.log_event("No_title_provided", command)
+                continue
+            
+            if args.title in [t["title"] for t in list_app.all_tasks]:
+                console.print(f"[yellow]Задача '{args.title}' уже существует. Пропуск добавления.[/yellow]")
+                logs.log_event("add", args.title, "already exists")
+                continue
 
-    elif args.action == "del":
-        if not args.title:
-            console.print("[red]Ошибка: --title требуется для удаления задачи.[/red]")
-            return
-        app.delete(args.title)
-        app.save_tasks()
-        console.print(f"[green]Задача '{args.title}' удалена.[/green]")
+            app.add_task(args.title, args.description)
+            app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
+            list_app.add_task({"title": args.title, "description": args.description, "completed": False})
+            logs.log_event("add", args.title, args.description)
+            console.print(f"[green]Задача '{args.title}' добавлена.[/green]")              
 
-    elif args.action == "list":
-        app.list()
+        elif args.action == "done":
+            if not args.title: 
+                console.print("[red]Ошибка: --title требуется для завершения задачи.[/red]")
+                logs.log_event("No_title_provided", command)
+                continue
 
-    elif args.action == "events":
-        app.events()
+            app.done(args.title)
+            app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
+            logs.log_event("done", args.title)
+            console.print(f"[green]Задача '{args.title}' завершена.[/green]")
 
-    elif args.action == "help":
-        app.help()
+        elif args.action == "del":
+            if not args.title:
+                console.print("[red]Ошибка: --title требуется для удаления задачи.[/red]")
+                logs.log_event("No_title_provided", command)
+                continue    
+            
+            app.delete(args.title)
+            app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
+            logs.log_event("delete", args.title)
+
+        elif args.action == "list":
+            logs.log_event("List_requested", "list")
+            list_app.list()
+
+        elif args.action == "logs":
+            logs.show_events()
+
+        elif args.action == "help":
+            logs.log_event("Help_requested", "help")
+            app.help()
 
 if __name__ == "__main__":
     main()
