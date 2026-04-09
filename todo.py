@@ -48,14 +48,13 @@ def main() -> None:
                 logs.log_event("No_title_provided", command)
                 continue
             
-            if args.title in [t["title"] for t in list_app.all_tasks]:
+            if args.title in list_app.all_tasks:
                 console.print(f"[yellow]Задача '{args.title}' уже существует. Пропуск добавления.[/yellow]")
                 logs.log_event("add", args.title, "already exists")
                 continue
 
             app.add_task(args.title, args.description)
-            app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
-            list_app.add_task({"title": args.title, "description": args.description, "completed": False})
+            # app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
             logs.log_event("add", args.title, args.description)
             console.print(f"[green]Задача '{args.title}' добавлена.[/green]")              
 
@@ -77,7 +76,7 @@ def main() -> None:
                 continue    
             
             app.delete(args.title)
-            app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
+            #app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
             logs.log_event("delete", args.title)
 
         elif args.action == "list":
