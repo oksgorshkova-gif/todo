@@ -5,29 +5,29 @@ from rich.panel import Panel
 console = Console()
 
 class List:
-    all_tasks = []
+    all_tasks = {}
 
     def __init__(self):
         pass
 
-    def add_task(self, task: dict) -> None:
-        self.all_tasks.append(task)
+    def add_task(self, task: dict) -> None:       
+        self.all_tasks.update(task)
 
     def list(self) -> None:
         self.show_tasks = []
 
         print("All tasks:")        
-        for task in self.all_tasks:
-            if task["completed"]:
-                if task["description"]: 
-                    self.show_tasks.append(f"- {task['title']} ([bold green]Completed[/bold green])\n  Description: {task['description']}") 
+        for task in self.all_tasks.keys():
+            if self.all_tasks[task]["completed"]:
+                if self.all_tasks[task]["description"]: 
+                    self.show_tasks.append(f"- {task} ([bold green]Completed[/bold green])\n  Description: {self.all_tasks[task]['description']}") 
                 else:
-                    self.show_tasks.append(f"- {task['title']} ([bold green]Completed[/bold green])") 
+                    self.show_tasks.append(f"- {task} ([bold green]Completed[/bold green])") 
             else:
-                if task["description"]:
-                    self.show_tasks.append(f"- {task['title']} ([bold yellow]Pending[/bold yellow])\n  Description: {task['description']}") 
+                if self.all_tasks[task]["description"]:
+                    self.show_tasks.append(f"- {task} ([bold yellow]Pending[/bold yellow])\n  Description: {self.all_tasks[task]['description']}") 
                 else:
-                    self.show_tasks.append(f"- {task['title']} ([bold yellow]Pending[/bold yellow])")
+                    self.show_tasks.append(f"- {task} ([bold yellow]Pending[/bold yellow])")
 
         console.print(
             Panel.fit(
@@ -59,40 +59,39 @@ class ToDoApp:
     tasks = List()
 
     def __init__(self):
-        self.tasks = self.load_tasks()
+        pass
     
     def load_tasks(self) -> list:
         return self.tasks
 
     def add_task(self, title: str, task_description: str = "") -> None:
         task = {
-                "title": title,
-                "description": task_description, 
-                "completed": False, 
-                "created_at": time.time(),
-                "completed_at": None
+                title: {
+                    "description": task_description,
+                    "completed": False,
+                    "created_at": time.time(),
+                    "completed_at": None
                 }
+        }
+        self.tasks.add_task(task)
 
     def done(self, task_title: str) -> None:
-        for task in self.tasks.all_tasks:
-            if task["title"] == task_title:
-                print(f"Completing task: {task_title}")
-                task["completed"] = True
-                task["completed_at"] = time.time()
-                self.events_log.append(("complete", task_title))
-                return  
-        print(f"Task not found: {task_title}")
-        self.events_log.append(("complete", task_title, "not found"))
+        try:
+            self.tasks.all_tasks[task_title]["completed"] = True
+            self.tasks.all_tasks[task_title]["completed_at"] = time.time()
+            self.events_log.append(("done", task_title))
+        except KeyError:
+            print(f"Task not found: {task_title}")
+            self.events_log.append(("complete", task_title, "not found"))
 
     def delete(self, task_title: str) -> None:
-        for i, task in enumerate(self.tasks.all_tasks):
-            if task["title"] == task_title:
-                del self.tasks.all_tasks[i]
-                self.events_log.append(("delete", task_title))
-                console.print(f"[green]Задача '{task_title}' удалена.[/green]")
-                return
-        print(f"Task not found: {task_title}")
-        self.events_log.append(("delete", task_title, "not found"))
+        try:
+            del self.tasks.all_tasks[task_title]
+            self.events_log.append(("delete", task_title))
+            console.print(f"[green]Задача '{task_title}' удалена.[/green]")
+        except KeyError:
+            print(f"Task not found: {task_title}")
+            self.events_log.append(("delete", task_title, "not found"))
 
     def save_tasks(self) -> None:
         pass
@@ -105,4 +104,6 @@ class ToDoApp:
         print("- list: List all tasks")
         print("- events: Show task events")
         print("- help: Show this help message")
+
+
         
