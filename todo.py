@@ -1,94 +1,90 @@
-from models import ToDoApp, List, Logs
-import argparse
-from rich.console import Console
+import shlex
 
-console = Console()
+from models import Task, TaskManager
+import view
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Простой CLI для управления задачами ToDo."
-    )
-    parser.add_argument(
-        "action",
-        choices=["add", "done", "del", "list", "logs", "help"],
-        help="Действие для выполнения: add, done, del, list, logs, help",
-    )
-    parser.add_argument(
-        "--title",
-        help="Название задачи (требуется для add, done, del)",
-    )
-    parser.add_argument(
-        "--description",
-        default="",
-        help="Описание задачи (только для add)",
-    )
-    return parser
+
+def parse_args(raw: str) -> tuple[str, dict[str, str]]:
+    parts = shlex.split(raw)
+    if not parts:
+        return "", {}
+
+    action = parts[0].lower()
+    kwargs: dict[str, str] = {}
+    i = 1
+    while i < len(parts):
+        if parts[i].startswith("--") and i + 1 < len(parts):
+            kwargs[parts[i][2:]] = parts[i + 1]
+            i += 2
+        else:
+            i += 1
+    return action, kwargs
+
 
 def main() -> None:
-    parser = build_parser()
-    app = ToDoApp()
-    list_app = List()
-    logs = Logs()
+    app = TaskManager()
 
     while True:
-        command = input("Введите команду (add, done, del, list, logs, help) или 'exit' для выхода: ").strip()
-        if command.lower() == "exit":
-            console.print("[green]Выход из приложения.[/green]")
-            break
         try:
-            args = parser.parse_args(command.split())
-        except SystemExit:
-            console.print("[red]Неверная команда. Введите 'help' для получения списка доступных команд.[/red]")
-            logs.log_event("invalid_command", command)
+            raw = input(">>> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+
+        if not raw:
             continue
 
-        if args.action == "add":
-            if not args.title:
-                console.print("[red]Ошибка: --title требуется для добавления задачи.[/red]")
-                logs.log_event("No_title_provided", command)
+        action, kwargs = parse_args(raw)
+
+        if action == "exit":
+            view.show_success("Bye!")
+            break
+
+        elif action == "add":
+            title = kwargs.get("title")
+            if not title:
+                view.show_error("--title is required.")
                 continue
-            
-            if args.title in list_app.all_tasks:
-                console.print(f"[yellow]Задача '{args.title}' уже существует. Пропуск добавления.[/yellow]")
-                logs.log_event("add", args.title, "already exists")
+            result = app.add(title, kwargs.get("description", ""))
+            if isinstance(result, Task):
+                view.show_success(f"Task '{title}' added.")
+            else:
+                view.show_error(result)
+
+        elif action == "done":
+            title = kwargs.get("title")
+            if not title:
+                view.show_error("--title is required.")
                 continue
+            result = app.done(title)
+            if isinstance(result, Task):
+                view.show_success(f"Task '{title}' completed.")
+            else:
+                view.show_error(result)
 
-            app.add_task(args.title, args.description)
-            # app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
-            logs.log_event("add", args.title, args.description)
-            console.print(f"[green]Задача '{args.title}' добавлена.[/green]")              
-
-        elif args.action == "done":
-            if not args.title: 
-                console.print("[red]Ошибка: --title требуется для завершения задачи.[/red]")
-                logs.log_event("No_title_provided", command)
+        elif action == "del":
+            title = kwargs.get("title")
+            if not title:
+                view.show_error("--title is required.")
                 continue
+            result = app.delete(title)
+            if isinstance(result, Task):
+                view.show_success(f"Task '{title}' deleted.")
+            else:
+                view.show_error(result)
 
-            app.done(args.title)
-            app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
-            logs.log_event("done", args.title)
-            console.print(f"[green]Задача '{args.title}' завершена.[/green]")
+        elif action == "list":
+            view.show_tasks(app.tasks)
 
-        elif args.action == "del":
-            if not args.title:
-                console.print("[red]Ошибка: --title требуется для удаления задачи.[/red]")
-                logs.log_event("No_title_provided", command)
-                continue    
-            
-            app.delete(args.title)
-            #app.save_tasks() # Отключено сохранение в файл для упрощения тестирования
-            logs.log_event("delete", args.title)
+        elif action == "logs":
+            view.show_events(app.events)
 
-        elif args.action == "list":
-            logs.log_event("List_requested", "list")
-            list_app.list()
+        elif action == "help":
+            view.show_help()
 
-        elif args.action == "logs":
-            logs.show_events()
+        else:
+            view.show_error(f"Unknown command: '{action}'. Type 'help' for usage.")
 
-        elif args.action == "help":
-            logs.log_event("Help_requested", "help")
-            app.help()
 
 if __name__ == "__main__":
     main()
